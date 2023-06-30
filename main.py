@@ -152,7 +152,6 @@ def main():
 
         # decision tree on predictions of GNN (explaiable model)
         cn = ["BA graph", "middle", "bottom", "top"]
-        #cn = sorted(["0","1","2","3"])
         feature_cols = ['neighbours', 'in_C3', 'in_C4', 'neighbour_C3', 'neighbour_C4']
         clf = DecisionTreeClassifier(criterion="entropy", max_depth=10)
         clf = clf.fit(df[feature_cols].iloc[train_indices], indices)

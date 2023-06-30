@@ -5,6 +5,10 @@ from dgl.nn import GraphConv
 import torch.nn.functional as F
 from dgl.data import BAShapeDataset
 from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import tree
+from matplotlib import pyplot as plt
+from sklearn.metrics import accuracy_score
 
 dataset = BAShapeDataset()
 
@@ -43,7 +47,7 @@ def in_C(start, index, C_len, visited, edge_list):
     if (C_len == 0) and (index == start):
         return 1
     for i in edge_list[index]:
-        val = in_C(start, i, C_len-1, visited + [index], edge_list)
+        val = in_C(start, i, C_len-1, visited[:] + [index], edge_list[:])
         if val == 1:
             return 1
     return 0
@@ -140,6 +144,36 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
     criterion = torch.nn.CrossEntropyLoss()
 
+    def explainableModel(data_indices, plot=False):
+        # get predictions of GNN on training data
+        logits = model(G, x)
+        _, indices = torch.max(logits[train_indices], dim=1)
+        indices = indices.tolist()
+
+        # decision tree on predictions of GNN (explaiable model)
+        cn = ["BA graph", "middle", "bottom", "top"]
+        #cn = sorted(["0","1","2","3"])
+        feature_cols = ['neighbours', 'in_C3', 'in_C4', 'neighbour_C3', 'neighbour_C4']
+        clf = DecisionTreeClassifier(criterion="entropy", max_depth=10)
+        clf = clf.fit(df[feature_cols].iloc[train_indices], indices)
+
+        if plot:
+            tree.plot_tree(clf,
+                           feature_names=feature_cols,
+                           class_names=cn,
+                           filled=True)
+            plt.show()
+
+        # data to predict
+        _, indices = torch.max(logits[data_indices], dim=1)
+        indices = indices.tolist()
+
+        # predict forecast of GNN
+        y_pred = clf.predict(df[feature_cols].iloc[data_indices])
+        y_pred = y_pred.tolist()
+        return accuracy_score(y_pred, indices)
+
+
     def train():
         model.train()
         logits = model(G, x)
@@ -161,11 +195,17 @@ def main():
             return correct.item() * 1.0 / len(test_indices)
 
     # Training loop
-    for epoch in range(200):
+    for epoch in range(201):
         loss = train()
         if epoch % 10 == 0:
             acc = test()
-            print(f'Epoch: {epoch}, Loss: {loss:.4f}, Accuracy: {acc:.4f}')
+            if epoch in [10, 100, 200]:
+                acc_train_exp = explainableModel(train_indices, plot=True)
+            else:
+                acc_train_exp = explainableModel(train_indices, plot=False)
+            acc_test_exp = explainableModel(test_indices)
+            print(f'GNN         Epoch: {epoch}, Loss: {loss:.4f}, Accuracy: {acc:.4f}')
+            print(f'Exp Model   Accuracy training: {acc_train_exp:.4f}, Accuracy test: {acc_test_exp:.4f}')
 
 
 if __name__ == "__main__":

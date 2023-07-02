@@ -12,6 +12,7 @@ from sklearn.metrics import accuracy_score
 
 dataset = BAShapeDataset()
 
+
 # Define the Graph Convolutional Network (GCN) model
 class GCN(torch.nn.Module):
     def __init__(self, in_feats, hidden_size, num_classes):
@@ -61,11 +62,14 @@ def neighbour_C(index, C_len, edge_list, in_C3, in_C4):
         index (int): The node index.
         C_len (int): The length of the cycle.
         edge_list (list): List of edges.
-        in_C3 (list): List indicating whether each node is part of a length 3 cycle.
-        in_C4 (list): List indicating whether each node is part of a length 4 cycle.
+        in_C3 (list): List indicating whether
+        each node is part of a length 3 cycle.
+        in_C4 (list): List indicating whether
+        each node is part of a length 4 cycle.
 
     Returns:
-        int: 1 if the node has neighbors in the specified cycle length, 0 otherwise.
+        int: 1 if the node has neighbors in
+        the specified cycle length, 0 otherwise.
     """
     if C_len == 3:
         for i in edge_list[index]:
@@ -108,11 +112,12 @@ def main():
     in_C4 = [in_C(i, i, 4, [], edge_list) for i in range(len(label))]
 
     # Compute the number of neighbors within a C3 subgraph for each node
-    neighbour_C3 = [neighbour_C(i, 3, edge_list, in_C3, in_C4) for i in range(len(label))]
+    neighbour_C3 = \
+        [neighbour_C(i, 3, edge_list, in_C3, in_C4) for i in range(len(label))]
 
     # Compute the number of neighbors within a C4 subgraph for each node
-    neighbour_C4 = [neighbour_C(i, 4, edge_list, in_C3, in_C4) for i in range(len(label))]
-
+    neighbour_C4 = \
+        [neighbour_C(i, 4, edge_list, in_C3, in_C4) for i in range(len(label))]
 
     data = {
         'neighbours': neighbours,
@@ -137,11 +142,14 @@ def main():
     num_classes = torch.unique(y).size(0)
 
     # Get your indices from train_test_split
-    train_indices, test_indices = train_test_split(list(range(G.number_of_nodes())), test_size=0.25, random_state=42)
+    train_indices, test_indices = \
+        train_test_split(list(range(G.number_of_nodes())),
+                         test_size=0.25, random_state=42)
 
     # Initialize the GCN model, optimizer, and loss function
     model = GCN(x.size(1), 16, num_classes)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(),
+                                 lr=0.01, weight_decay=5e-4)
     criterion = torch.nn.CrossEntropyLoss()
 
     def explainableModel(data_indices, plot=False):
@@ -152,12 +160,13 @@ def main():
 
         # decision tree on predictions of GNN (explaiable model)
         cn = ["BA graph", "middle", "bottom", "top"]
-        feature_cols = ['neighbours', 'in_C3', 'in_C4', 'neighbour_C3', 'neighbour_C4']
+        feature_cols = ['neighbours', 'in_C3', 'in_C4',
+                        'neighbour_C3', 'neighbour_C4']
         clf = DecisionTreeClassifier(criterion="entropy", max_depth=10)
         clf = clf.fit(df[feature_cols].iloc[train_indices], indices)
 
         if plot:
-            plt.figure(dpi=200) 
+            plt.figure(dpi=200)
             tree.plot_tree(clf,
                            feature_names=feature_cols,
                            class_names=cn,
@@ -172,7 +181,6 @@ def main():
         y_pred = clf.predict(df[feature_cols].iloc[data_indices])
         y_pred = y_pred.tolist()
         return accuracy_score(y_pred, indices)
-
 
     def train():
         model.train()
@@ -204,8 +212,10 @@ def main():
             else:
                 acc_train_exp = explainableModel(train_indices, plot=False)
             acc_test_exp = explainableModel(test_indices)
-            print(f'GNN         Epoch: {epoch}, Loss: {loss:.4f}, Accuracy: {acc:.4f}')
-            print(f'Exp Model   Accuracy training: {acc_train_exp:.4f}, Accuracy test: {acc_test_exp:.4f}')
+            print(f'GNN         Epoch: {epoch}, '
+                  f'Loss: {loss:.4f}, Accuracy: {acc:.4f}')
+            print(f'Exp Model   Accuracy training: {acc_train_exp:.4f},'
+                  f' Accuracy test: {acc_test_exp:.4f}')
 
 
 if __name__ == "__main__":

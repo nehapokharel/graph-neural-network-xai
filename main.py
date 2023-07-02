@@ -157,6 +157,7 @@ def main():
         clf = clf.fit(df[feature_cols].iloc[train_indices], indices)
 
         if plot:
+            plt.figure(dpi=200) 
             tree.plot_tree(clf,
                            feature_names=feature_cols,
                            class_names=cn,
